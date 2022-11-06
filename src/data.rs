@@ -149,7 +149,7 @@ impl AnimSource for Stream {
 
         label.clear();
         if open {
-            write!(label, "Live {:.2} ({})ms)", time * 0.001, time - prev).unwrap();
+            write!(label, "Live {:.2} ({}ms)", time * 0.001, time - prev).unwrap();
         } else {
             write!(label, "Offline").unwrap();
         }
