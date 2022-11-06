@@ -55,33 +55,41 @@ fn setup(
         ..default()
     });
     // cube
-    commands.spawn_bundle(PbrBundle {
-        mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-        material: materials.add(Color::rgb(0.8, 0.4, 0.4).into()),
-        transform: Transform::from_xyz(1.0, 1.0, 0.0),
-        ..default()
-    }).insert(QuatTarget);
+    commands
+        .spawn_bundle(PbrBundle {
+            mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
+            material: materials.add(Color::rgb(0.8, 0.4, 0.4).into()),
+            transform: Transform::from_xyz(1.0, 1.0, 0.0),
+            ..default()
+        })
+        .insert(QuatTarget);
     // cube
-    commands.spawn_bundle(PbrBundle {
-        mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-        material: materials.add(Color::rgb(0.4, 0.4, 0.8).into()),
-        transform: Transform::from_xyz(-1.0, 1.0, 0.0),
-        ..default()
-    }).insert(IntegrateTarget);
+    commands
+        .spawn_bundle(PbrBundle {
+            mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
+            material: materials.add(Color::rgb(0.4, 0.4, 0.8).into()),
+            transform: Transform::from_xyz(-1.0, 1.0, 0.0),
+            ..default()
+        })
+        .insert(IntegrateTarget);
     // accel vector
-    commands.spawn_bundle(PbrBundle {
-        mesh: arrow.clone(),
-        material: materials.add(Color::rgb(0.8, 0.8, 0.8).into()),
-        transform: Transform::from_xyz(0.0, 1.0, 1.5),
-        ..default()
-    }).insert(AccelTarget);
+    commands
+        .spawn_bundle(PbrBundle {
+            mesh: arrow.clone(),
+            material: materials.add(Color::rgb(0.8, 0.8, 0.8).into()),
+            transform: Transform::from_xyz(0.0, 1.0, 1.5),
+            ..default()
+        })
+        .insert(AccelTarget);
     // mag vector
-    commands.spawn_bundle(PbrBundle {
-        mesh: arrow.clone(),
-        material: materials.add(Color::rgb(0.2, 0.2, 0.8).into()),
-        transform: Transform::from_xyz(0.0, 1.0, 1.5),
-        ..default()
-    }).insert(MagTarget);
+    commands
+        .spawn_bundle(PbrBundle {
+            mesh: arrow.clone(),
+            material: materials.add(Color::rgb(0.2, 0.2, 0.8).into()),
+            transform: Transform::from_xyz(0.0, 1.0, 1.5),
+            ..default()
+        })
+        .insert(MagTarget);
     // light
     commands.spawn_bundle(PointLightBundle {
         point_light: PointLight {
@@ -92,24 +100,26 @@ fn setup(
         transform: Transform::from_xyz(4.0, 8.0, 4.0),
         ..default()
     });
-    commands.spawn_bundle(TextBundle::from_section(
-        "Frame counter",
-        TextStyle {
-            font: asset_server.load("luculent.ttf"),
-            font_size: 32.0,
-            color: Color::rgb(1., 1., 1.),
-        }
-    )
-    .with_text_alignment(TextAlignment::TOP_CENTER)
-    .with_style(Style {
-        position_type: PositionType::Absolute,
-        position: UiRect {
-            bottom: Val::Px(5.0),
-            right: Val::Px(15.0),
+    commands.spawn_bundle(
+        TextBundle::from_section(
+            "Frame counter",
+            TextStyle {
+                font: asset_server.load("luculent.ttf"),
+                font_size: 32.0,
+                color: Color::rgb(1., 1., 1.),
+            },
+        )
+        .with_text_alignment(TextAlignment::TOP_CENTER)
+        .with_style(Style {
+            position_type: PositionType::Absolute,
+            position: UiRect {
+                bottom: Val::Px(5.0),
+                right: Val::Px(15.0),
+                ..default()
+            },
             ..default()
-        },
-        ..default()
-    }));
+        }),
+    );
 
     // camera
     commands.spawn_bundle(Camera3dBundle {
@@ -141,9 +151,8 @@ fn update_accel(
     let a = Vec3::new(a[0], a[1], a[2]);
     let m = Vec3::new(m[0], m[1], m[2]);
     let l = a.length();
- 
 
-    let r = Quat::from_rotation_x(3.14159/2.);
+    let r = Quat::from_rotation_x(3.14159 / 2.);
 
     if l > 0.1 {
         accel.scale = Vec3::new(l / 25., 0.01, 0.01);

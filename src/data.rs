@@ -1,7 +1,7 @@
+use std::fmt::Write;
 use std::io::BufRead;
 use std::sync;
 use std::thread;
-use std::fmt::Write;
 use std::time::Duration;
 
 use bevy::math::Quat;
@@ -111,7 +111,10 @@ fn read_forever(name: &str, data: sync::Arc<sync::RwLock<StreamData>>) {
 
     loop {
         let f = loop {
-            match serialport::new(name, 460800).timeout(Duration::new(60, 0)).open() {
+            match serialport::new(name, 460800)
+                .timeout(Duration::new(60, 0))
+                .open()
+            {
                 Ok(f) => break f,
                 Err(e) => {
                     thread::sleep_ms(100);
@@ -129,7 +132,7 @@ fn read_forever(name: &str, data: sync::Arc<sync::RwLock<StreamData>>) {
                         BrokenPipe | TimedOut | UnexpectedEof => break,
                         _ => continue,
                     }
-                },
+                }
             };
             *buffer = match serde_json::from_str(&l) {
                 Ok(s) => s,
