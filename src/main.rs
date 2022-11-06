@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 mod data;
 use data::*;
+mod intg;
 
 fn main() {
     let name = std::env::args().skip(1).next();
@@ -99,21 +100,9 @@ fn run_animation(mut data: ResMut<Anim>, mut text: Query<&mut Text>) {
 }
 
 fn update_quat(mut quat: Query<(&mut Transform, With<QuatTarget>)>, data: Res<Anim>) {
-    let q = data.0.get_quat();
-    quat.single_mut().0.rotation = Quat::from_xyzw(q[1], q[2], q[3], q[0]);
+    quat.single_mut().0.rotation = data.0.get_quat();
 }
 
 fn update_intg(mut intg: Query<(&mut Transform, With<IntegrateTarget>)>, data: Res<Anim>) {
-    let intg = &mut intg.single_mut().0;
-
-    let (g, reset) = data.0.get_gyro();
-    if reset {
-        intg.rotation = Quat::default();
-    }
-
-    let br = intg.rotation;
-    let lx = Quat::from_axis_angle(br * Vec3::new(1., 0., 0.), g[0]);
-    let ly = Quat::from_axis_angle(br * Vec3::new(0., 1., 0.), g[2]);
-    let lz = Quat::from_axis_angle(br * Vec3::new(0., 0., 1.), -g[1]);
-    intg.rotation *= lx * ly * lz;
+    intg.single_mut().0.rotation = data.0.get_gyro();
 }

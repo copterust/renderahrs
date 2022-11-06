@@ -1,15 +1,19 @@
 use std::io::BufRead;
-use serde::Deserialize;
-use serde_json;
 use std::sync;
 use std::thread;
 use std::fmt::Write;
 use std::time::Duration;
 
+use bevy::math::Quat;
+use serde::Deserialize;
+use serde_json;
+
+use crate::intg;
+
 pub trait AnimSource {
     fn think(&mut self, label: &mut String);
-    fn get_gyro(&self) -> ([f32; 3], bool);
-    fn get_quat(&self) -> [f32; 4];
+    fn get_gyro(&self) -> Quat;
+    fn get_quat(&self) -> Quat;
 }
 
 #[derive(Default, Deserialize)]
@@ -21,9 +25,11 @@ pub struct Sample {
     pub state: [[f32; 7]; 1],
 }
 
+#[derive(Default)]
 pub struct FileData {
     pub samples: Vec<Sample>,
     pub frame: usize,
+    pub intg: intg::Gyro,
 }
 
 impl FileData {
@@ -41,29 +47,32 @@ impl FileData {
 
         FileData {
             samples: v,
-            frame: 0,
+            ..FileData::default()
         }
     }
 }
 
 impl AnimSource for FileData {
     fn think(&mut self, label: &mut String) {
+        if self.frame == 0 {
+            self.intg.reset();
+        }
+        let s = &self.samples[self.frame];
+        self.intg.add_sample(s.dt, s.gyro);
+
         self.frame = (self.frame + 1) % self.samples.len();
 
         label.clear();
         write!(label, "{} / {}", self.frame, self.samples.len()).unwrap();
     }
 
-    fn get_gyro(&self) -> ([f32; 3], bool) {
-        let s = &self.samples[self.frame];
-        let g = s.gyro;
-        let dt = s.dt * 0.001;
-        ([g[0] * dt, g[1] * dt, g[2] * dt], self.frame == 0)
+    fn get_gyro(&self) -> Quat {
+        self.intg.q
     }
 
-    fn get_quat(&self) -> [f32; 4] {
+    fn get_quat(&self) -> Quat {
         let s = self.samples[self.frame].state[0];
-        [ s[0], s[1], s[2], s[3] ]
+        Quat::from_xyzw(s[1], s[2], s[3], s[0])
     }
 }
 
@@ -77,6 +86,7 @@ pub struct StreamData {
     time: f32,
     prev: f32,
     open: bool,
+    intg: intg::Gyro,
     sample: Box<Sample>,
 }
 
@@ -124,6 +134,7 @@ fn read_forever(name: &str, data: sync::Arc<sync::RwLock<StreamData>>) {
                 let mut d = data.write().unwrap();
                 d.time += buffer.dt;
                 d.open = true;
+                d.intg.add_sample(buffer.dt, buffer.gyro);
                 std::mem::swap(&mut d.sample, &mut buffer);
             }
         }
@@ -133,6 +144,7 @@ fn read_forever(name: &str, data: sync::Arc<sync::RwLock<StreamData>>) {
             d.open = false;
             d.time = 0.0;
             d.prev = 0.0;
+            d.intg.reset();
         }
     }
 }
@@ -155,17 +167,14 @@ impl AnimSource for Stream {
         }
     }
 
-    fn get_gyro(&self) -> ([f32; 3], bool) {
+    fn get_gyro(&self) -> Quat {
         let data = self.data.read().unwrap();
-        let g = &data.sample.gyro;
-        let dt = data.sample.dt * 0.001;
-        ([g[0]*dt, g[1]*dt, g[2]*dt], !data.open)
+        data.intg.q
     }
 
-    fn get_quat(&self) -> [f32; 4] {
+    fn get_quat(&self) -> Quat {
         let data = self.data.read().unwrap();
         let s = &data.sample.state[0];
-        [s[0], s[1], s[2], s[3]]
+        Quat::from_xyzw(s[1], s[2], s[3], s[0])
     }
 }
-
