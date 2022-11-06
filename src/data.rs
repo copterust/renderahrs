@@ -67,7 +67,7 @@ impl AnimSource for FileData {
     }
 
     fn get_gyro(&self) -> Quat {
-        self.intg.q
+        self.intg.t.rotation
     }
 
     fn get_quat(&self) -> Quat {
@@ -169,7 +169,7 @@ impl AnimSource for Stream {
 
     fn get_gyro(&self) -> Quat {
         let data = self.data.read().unwrap();
-        data.intg.q
+        data.intg.t.rotation
     }
 
     fn get_quat(&self) -> Quat {
