@@ -1,50 +1,20 @@
-
-use std::io::BufRead;
-
 use bevy::prelude::*;
 
-use serde::{Deserialize};
-use serde_json;
-
-#[derive(Deserialize)]
-struct Sample {
-    dt: f32,
-    _accel: [f32; 3],
-    gyro: [f32; 3],
-    _mag: [f32; 3],
-    state: [[f32; 7]; 1],
-}
-
-fn load_animation() -> Vec<Sample> {
-    let name = std::env::args().skip(1).next();
-    let name = name.as_deref().unwrap_or("tilt1.txt");
-    let f = std::io::BufReader::new(std::fs::File::open(name).unwrap());
-    let mut v = Vec::new();
-    for l in f.lines() {
-        let l = l.unwrap();
-        let s: Sample = match serde_json::from_str(&l) {
-            Ok(s) => s,
-            Err(_) => continue,
-        };
-        v.push(s);
-    }
-
-    v
-}
-
-struct AnimationData {
-    samples: Vec<Sample>,
-    frame: usize,
-}
+mod data;
+use data::*;
 
 fn main() {
-    let samples = load_animation();
+    let name = std::env::args().skip(1).next();
+    let name = name.as_deref().unwrap_or("tilt1.txt");
+
+    let anim = if name.starts_with("/dev/") {
+        Anim(Box::new(Stream::start(name)))
+    } else {
+        Anim(Box::new(FileData::load(name)))
+    };
 
     App::new()
-        .insert_resource(AnimationData {
-            samples,
-            frame: 0,
-        })
+        .insert_resource(anim)
         .add_system(update_quat)
         .add_system(update_intg)
         .add_system(run_animation)
@@ -52,6 +22,8 @@ fn main() {
         .add_startup_system(setup)
         .run();
 }
+
+struct Anim(Box<dyn AnimSource + Sync + Send>);
 
 #[derive(Component)]
 struct QuatTarget;
@@ -76,14 +48,14 @@ fn setup(
     commands.spawn_bundle(PbrBundle {
         mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
         material: materials.add(Color::rgb(0.8, 0.4, 0.4).into()),
-        transform: Transform::from_xyz(1.0, 0.5, 0.0),
+        transform: Transform::from_xyz(1.0, 1.0, 0.0),
         ..default()
     }).insert(QuatTarget);
     // cube
     commands.spawn_bundle(PbrBundle {
         mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
         material: materials.add(Color::rgb(0.4, 0.4, 0.8).into()),
-        transform: Transform::from_xyz(-1.0, 0.5, 0.0),
+        transform: Transform::from_xyz(-1.0, 1.0, 0.0),
         ..default()
     }).insert(IntegrateTarget);
     // light
@@ -96,7 +68,6 @@ fn setup(
         transform: Transform::from_xyz(4.0, 8.0, 4.0),
         ..default()
     });
-
     commands.spawn_bundle(TextBundle::from_section(
         "Frame counter",
         TextStyle {
@@ -123,29 +94,26 @@ fn setup(
     });
 }
 
-fn run_animation(mut data: ResMut<AnimationData>, mut text: Query<&mut Text>) {
-    use std::fmt::Write;
-
-    data.frame = (data.frame + 1) % data.samples.len();
-    let text = &mut text.single_mut().sections[0].value;
-    text.clear();
-    write!(text, "{} / {}", data.frame, data.samples.len()).unwrap();
+fn run_animation(mut data: ResMut<Anim>, mut text: Query<&mut Text>) {
+    data.0.think(&mut text.single_mut().sections[0].value);
 }
 
-fn update_quat(mut quat: Query<(&mut Transform, With<QuatTarget>)>, data: Res<AnimationData>) {
-    let sample = &data.samples[data.frame];
-    let q = &sample.state[0]; // wxyz
+fn update_quat(mut quat: Query<(&mut Transform, With<QuatTarget>)>, data: Res<Anim>) {
+    let q = data.0.get_quat();
     quat.single_mut().0.rotation = Quat::from_xyzw(q[1], q[2], q[3], q[0]);
 }
 
-fn update_intg(mut intg: Query<(&mut Transform, With<IntegrateTarget>)>, data: Res<AnimationData>) {
-    if data.frame == 0 {
-        intg.single_mut().0.rotation = Quat::default();
-    }
-    let sample = &data.samples[data.frame];
-    let dt = sample.dt / 1000.0;
-    let g = &sample.gyro;
-    let r = Quat::from_euler(EulerRot::XYZ, g[0] * dt, g[1] * dt, g[2] * dt);
-    intg.single_mut().0.rotation *= r;
-}
+fn update_intg(mut intg: Query<(&mut Transform, With<IntegrateTarget>)>, data: Res<Anim>) {
+    let intg = &mut intg.single_mut().0;
 
+    let (g, reset) = data.0.get_gyro();
+    if reset {
+        intg.rotation = Quat::default();
+    }
+
+    let br = intg.rotation;
+    let lx = Quat::from_axis_angle(br * Vec3::new(1., 0., 0.), g[0]);
+    let ly = Quat::from_axis_angle(br * Vec3::new(0., 1., 0.), g[1]);
+    let lz = Quat::from_axis_angle(br * Vec3::new(0., 0., 1.), g[2]);
+    intg.rotation *= lx * ly * lz;
+}
