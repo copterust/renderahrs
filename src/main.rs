@@ -113,7 +113,7 @@ fn update_intg(mut intg: Query<(&mut Transform, With<IntegrateTarget>)>, data: R
 
     let br = intg.rotation;
     let lx = Quat::from_axis_angle(br * Vec3::new(1., 0., 0.), g[0]);
-    let ly = Quat::from_axis_angle(br * Vec3::new(0., 1., 0.), g[1]);
-    let lz = Quat::from_axis_angle(br * Vec3::new(0., 0., 1.), g[2]);
+    let ly = Quat::from_axis_angle(br * Vec3::new(0., 1., 0.), g[2]);
+    let lz = Quat::from_axis_angle(br * Vec3::new(0., 0., 1.), -g[1]);
     intg.rotation *= lx * ly * lz;
 }
