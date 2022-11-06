@@ -14,14 +14,15 @@ pub trait AnimSource {
     fn think(&mut self, label: &mut String);
     fn get_gyro(&self) -> Quat;
     fn get_quat(&self) -> Quat;
+    fn get_arrows(&self) -> [[f32; 3]; 2];
 }
 
 #[derive(Default, Deserialize)]
 pub struct Sample {
     pub dt: f32,
-    pub _accel: [f32; 3],
+    pub accel: [f32; 3],
     pub gyro: [f32; 3],
-    pub _mag: [f32; 3],
+    pub mag: [f32; 3],
     pub state: [[f32; 7]; 1],
 }
 
@@ -73,6 +74,11 @@ impl AnimSource for FileData {
     fn get_quat(&self) -> Quat {
         let s = self.samples[self.frame].state[0];
         Quat::from_xyzw(s[1], s[2], s[3], s[0])
+    }
+
+    fn get_arrows(&self) -> [[f32; 3]; 2] {
+        let s = &self.samples[self.frame];
+        [s.accel, s.mag]
     }
 }
 
@@ -176,5 +182,10 @@ impl AnimSource for Stream {
         let data = self.data.read().unwrap();
         let s = &data.sample.state[0];
         Quat::from_xyzw(s[1], s[2], s[3], s[0])
+    }
+
+    fn get_arrows(&self) -> [[f32; 3]; 2] {
+        let s = &self.data.read().unwrap().sample;
+        [s.accel, s.mag]
     }
 }
