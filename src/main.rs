@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy::input::mouse::MouseMotion;
 
 mod data;
 use data::*;
@@ -20,6 +21,7 @@ fn main() {
         .add_system(update_intg)
         .add_system(update_accel)
         .add_system(run_animation)
+        .add_system(camera_controller)
         .add_plugins(DefaultPlugins)
         .add_startup_system(setup)
         .run();
@@ -38,6 +40,19 @@ struct AccelTarget;
 
 #[derive(Component)]
 struct MagTarget;
+
+#[derive(Component, Default)]
+struct Orbit {
+    rot: Vec2,
+}
+
+impl Orbit {
+    fn new(x: f32, y: f32) -> Orbit {
+        Orbit {
+            rot: Vec2::new(x, y)
+        }
+    }
+}
 
 /// set up a simple 3D scene
 fn setup(
@@ -123,9 +138,8 @@ fn setup(
 
     // camera
     commands.spawn_bundle(Camera3dBundle {
-        transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
         ..default()
-    });
+    }).insert(Orbit::new(2.0, 0.3));
 }
 
 fn run_animation(mut data: ResMut<Anim>, mut text: Query<&mut Text>) {
@@ -165,3 +179,23 @@ fn update_accel(
     north.scale = Vec3::new(0.5, 0.01, 0.01);
     north.rotation = Quat::from_rotation_arc(m.normalize(), Vec3::X);
 }
+
+fn camera_controller(
+    button: Res<Input<MouseButton>>,
+    mut motion: EventReader<MouseMotion>,
+    mut camera: Query<(&mut Transform, &mut Orbit)>,
+) {
+    let (mut trans, mut orbit) = camera.single_mut();
+
+    if button.pressed(MouseButton::Left) {
+        let rot = motion.iter().fold(Vec2::default(), |a, e| a + e.delta);
+        orbit.rot += rot / 100.0;
+        orbit.rot.x = orbit.rot.x.rem_euclid(std::f32::consts::TAU);
+        orbit.rot.y = orbit.rot.y.clamp(0.1, 1.5);
+    }
+
+    let r = Quat::from_euler(EulerRot::XYZ, 0.0, -orbit.rot.x, orbit.rot.y);
+    let p = r * Vec3::new(6.0, 0.0, 0.0);
+    *trans = Transform::from_translation(p).looking_at(Vec3::ZERO, Vec3::Y);
+}
+
