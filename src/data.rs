@@ -117,6 +117,7 @@ fn read_forever(name: &str, data: sync::Arc<sync::RwLock<StreamData>>) {
             {
                 Ok(f) => break f,
                 Err(e) => {
+                    #[allow(deprecated)]
                     thread::sleep_ms(100);
                 }
             }
