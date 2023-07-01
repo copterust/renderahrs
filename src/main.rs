@@ -199,4 +199,3 @@ fn camera_controller(
     let p = r * Vec3::new(6.0, 0.0, 0.0);
     *trans = Transform::from_translation(p).looking_at(Vec3::ZERO, Vec3::Y);
 }
-

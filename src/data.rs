@@ -8,6 +8,8 @@ use bevy::math::Quat;
 use serde::Deserialize;
 use serde_json;
 
+use ahrs;
+
 use crate::intg;
 
 pub trait AnimSource {
@@ -24,6 +26,7 @@ pub struct Sample {
     pub gyro: [f32; 3],
     pub mag: [f32; 3],
     pub state: [[f32; 7]; 1],
+    pub raw_mag: [f32; 3],
 }
 
 #[derive(Default)]
@@ -108,6 +111,7 @@ impl Stream {
 
 fn read_forever(name: &str, data: sync::Arc<sync::RwLock<StreamData>>) {
     let mut buffer = Box::new(Sample::default());
+    let mut marg = ahrs::MargEkf::new();
 
     loop {
         let f = loop {
@@ -140,6 +144,20 @@ fn read_forever(name: &str, data: sync::Arc<sync::RwLock<StreamData>>) {
                 Err(_) => continue,
             };
 
+            marg.predict(buffer.gyro[0],
+                         buffer.gyro[1],
+                         buffer.gyro[2],
+                         (buffer.dt as f32) / 1000.0);
+            marg.update(buffer.accel, buffer.mag);
+            buffer.state = [[marg.state[0],
+                             marg.state[1],
+                             marg.state[2],
+                             marg.state[3],
+                             marg.state[4],
+                             marg.state[5],
+                             marg.state[6],
+            ]];
+            println!("MAAAAG: {:?}", buffer.mag);
             {
                 let mut d = data.write().unwrap();
                 d.time += buffer.dt;
